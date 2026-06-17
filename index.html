@@ -48,6 +48,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .section-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
 .section-title{font-family:'Noto Serif JP',serif;font-size:15px;font-weight:500;color:var(--accent-800)}
 .section-badge{font-size:10px;background:var(--accent-100);color:var(--accent-600);border:0.5px solid var(--border);border-radius:20px;padding:2px 9px}
+.section-badge-new{font-size:10px;background:#ecfdf5;color:#065f46;border:0.5px solid #6ee7b7;border-radius:20px;padding:2px 9px}
 
 .table-card{background:var(--surface);border:0.5px solid var(--border);border-radius:16px;overflow:hidden}
 table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
@@ -189,30 +190,33 @@ const cache = {};
    =========================================== */
 
 function normalizeGaru(data) {
-    const ranking = (data.ranking || []).map(r => ({
+    const mapItem = (r, extra) => ({
         id: r.work_id,
         title: r.title,
         sub: r.voice_actor || "",
         url: r.affiliate_url || "#",
         img: r.thumb_url || "",
         tags: (r.genre || "").split(",").map(s => s.trim()).filter(Boolean).slice(0, 4),
+        releaseDate: r.release_date || "",
+        circle: r.circle || "",
+        ...extra,
+    });
+    const ranking = (data.ranking || []).map(r => mapItem(r, {
         rank: r.rank,
         rankChange: r.is_new ? null : (r.rank_change || 0),
         isNew: !!r.is_new,
-        releaseDate: r.release_date || "",
-        circle: r.circle || "",
     }));
-    const rising = (data.rising || []).map(r => ({
-        id: r.work_id, title: r.title, sub: r.voice_actor || "",
-        url: r.affiliate_url || "#", img: r.thumb_url || "",
-        tags: (r.genre || "").split(",").map(s => s.trim()).filter(Boolean).slice(0, 4),
+    const rising = (data.rising || []).map(r => mapItem(r, {
         rank: r.rank, rise: r.rise,
-        releaseDate: r.release_date || "",
-        circle: r.circle || "",
     }));
+    const newTop3 = (data.new_top3 || []).map(r => mapItem(r, { rank: r.rank }));
+    const randomNew = (data.random_new || []).map(r => mapItem(r, {}));
     return {
         stats: [data.total_works ?? "—", data.new_today ?? "—", data.rising_count ?? "—"],
         ranking, rising, preorders: [],
+        newTop3, randomNew,
+        showNewTop3: !!data.show_new_top3,
+        showRandomNew: !!data.show_random_new,
         graphData: data.graph_data || {},
         updated: data.today_str || "",
     };
@@ -251,6 +255,7 @@ function normalizeStella(data) {
     return {
         stats: [data.total_products ?? "—", "—", (data.preorders || []).length || "—"],
         ranking, rising: [], preorders,
+        newTop3: [], randomNew: [], showNewTop3: false, showRandomNew: false,
         graphData,
         updated: data.updated || "",
     };
@@ -277,6 +282,7 @@ function normalizePoke(items, meta) {
             meta.rising_count ?? "—",
         ],
         ranking, rising: [], preorders: [],
+        newTop3: [], randomNew: [], showNewTop3: false, showRandomNew: false,
         graphData: {},
         updated: meta.updated || "",
     };
@@ -381,6 +387,27 @@ function preorderRow(item, index) {
     </tr>`;
 }
 
+function newPickupRow(item, canvasId, isRandom) {
+    const rb = isRandom
+        ? `<span class="rb rn" style="font-size:9px">NEW</span>`
+        : `<span class="rb ${rankBadgeClass(item.rank)}">${item.rank}</span>`;
+    const dateSpan = item.releaseDate ? `<span class="work-date">${esc(item.releaseDate)}</span>` : "";
+    return `<tr>
+        <td class="thumb-wrap">
+            <span class="thumb-rank">${rb}</span>
+            <a href="${esc(item.url)}" target="_blank" rel="noopener">${thumbHtml(item)}</a>
+        </td>
+        <td class="title-cell">
+            <div class="work-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
+            <div class="work-circle">${dateSpan}${esc(item.circle || "")}</div>
+            ${tagsHtml(item.tags)}
+        </td>
+        <td style="font-size:11px;color:var(--accent-sub)">${esc(item.sub)}</td>
+        <td><span class="tnew">🆕 新着</span></td>
+        <td class="chart-cell"><canvas id="${canvasId}" class="chart-wrap" data-id="${esc(item.id)}"></canvas></td>
+    </tr>`;
+}
+
 /* ===========================================
    パネル全体のレンダリング
    =========================================== */
@@ -405,9 +432,36 @@ function renderPanel(siteKey, norm) {
         </div>`;
     }
 
-    let risingSection = "";
-    if (norm.rising && norm.rising.length) {
-        risingSection = `<div class="section">
+    // 急上昇 → 新着ランクイン上位3件 → ランダム新着1件、の優先順位で1セクションを構成
+    let pickupSection = "";
+    if (norm.showRandomNew && norm.randomNew && norm.randomNew.length) {
+        pickupSection = `<div class="section">
+            <div class="section-head">
+                <span style="font-size:16px">🎲</span>
+                <span class="section-title">本日の新着ピックアップ</span>
+                <span class="section-badge-new">ランダム1件</span>
+            </div>
+            <div class="table-card"><table>
+                <colgroup><col style="width:150px"><col style="width:auto"><col style="width:10%"><col style="width:8%"><col style="width:26%"></colgroup>
+                <thead><tr><th></th><th>タイトル / サークル</th><th>声優</th><th>新着</th><th class="chart-cell">推移グラフ</th></tr></thead>
+                <tbody>${norm.randomNew.map((r, i) => newPickupRow(r, `${siteKey}_rn_${i+1}`, true)).join("")}</tbody>
+            </table></div>
+        </div>`;
+    } else if (norm.showNewTop3 && norm.newTop3 && norm.newTop3.length) {
+        pickupSection = `<div class="section">
+            <div class="section-head">
+                <span style="font-size:16px">🆕</span>
+                <span class="section-title">新着作品</span>
+                <span class="section-badge-new">ランキング上位3件</span>
+            </div>
+            <div class="table-card"><table>
+                <colgroup><col style="width:150px"><col style="width:auto"><col style="width:10%"><col style="width:8%"><col style="width:26%"></colgroup>
+                <thead><tr><th></th><th>タイトル / サークル</th><th>声優</th><th>新着</th><th class="chart-cell">推移グラフ</th></tr></thead>
+                <tbody>${norm.newTop3.map((r, i) => newPickupRow(r, `${siteKey}_nt_${i+1}`, false)).join("")}</tbody>
+            </table></div>
+        </div>`;
+    } else if (norm.rising && norm.rising.length) {
+        pickupSection = `<div class="section">
             <div class="section-head">
                 <span style="font-size:16px">🔥</span>
                 <span class="section-title">急上昇作品</span>
@@ -445,7 +499,7 @@ function renderPanel(siteKey, norm) {
     </div>
 
     ${preorderSection}
-    ${risingSection}
+    ${pickupSection}
 
     <div class="section">
         <div class="section-head">
