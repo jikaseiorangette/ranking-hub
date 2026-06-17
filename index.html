@@ -13,7 +13,7 @@
 }
 /* サイトごとのアクセントカラー */
 .site-garu{--accent-50:#fff1f4;--accent-100:#fde0e7;--accent-600:#d4386f;--accent-800:#8b1a42;--accent-muted:#b8829a;--accent-sub:#8b4f6a;}
-.site-stella{--accent-50:#f1efff;--accent-100:#e1ddff;--accent-600:#534ab7;--accent-800:#26215c;--accent-muted:#9a93c9;--accent-sub:#534ab7;}
+.site-stella{--accent-50:#fdf6e3;--accent-100:#f9e7b8;--accent-600:#b8860b;--accent-800:#6b4e08;--accent-muted:#c9a86a;--accent-sub:#9a7209;}
 .site-poke{--accent-50:#f0f4ff;--accent-100:#e0e9ff;--accent-600:#4361c2;--accent-800:#1e3a8a;--accent-muted:#8a9ad0;--accent-sub:#4a5fa8;}
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -31,7 +31,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .site-tab:hover{background:var(--border-light)}
 .site-tab.active{color:#fff;border-color:transparent}
 .site-tab.active.site-garu{background:#d4386f}
-.site-tab.active.site-stella{background:#534ab7}
+.site-tab.active.site-stella{background:#b8860b}
 .site-tab.active.site-poke{background:#4361c2}
 .site-tab .tab-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
@@ -134,15 +134,9 @@ tbody tr:hover td{background:var(--accent-50)}
 </div>
 
 <div class="site-tabs" id="site-tabs">
-    <button class="site-tab active site-garu" data-site="garu">
-        <span class="tab-dot" style="background:#d4386f"></span>がるまに
-    </button>
-    <button class="site-tab site-stella" data-site="stella">
-        <span class="tab-dot" style="background:#534ab7"></span>ステラプレイヤー
-    </button>
-    <button class="site-tab site-poke" data-site="poke">
-        <span class="tab-dot" style="background:#4361c2"></span>ポケドラ
-    </button>
+    <button class="site-tab active site-garu" data-site="garu">がるまに</button>
+    <button class="site-tab site-stella" data-site="stella">ステラプレイヤー</button>
+    <button class="site-tab site-poke" data-site="poke">ポケドラ</button>
 </div>
 
 <div id="panels"></div>
@@ -164,6 +158,7 @@ const SOURCES = {
         sub: "乙女向けボイス・ASMR作品データ",
         accentClass: "site-garu",
         statLabels: ["📦 収録作品数", "✨ 新着", "📈 急上昇作品"],
+        statSubs: ["2026年発売作品", null, "前日比10位以上上昇"],
     },
     stella: {
         url: "https://jikaseiorangette.github.io/stellaplayer-ranking/data/ranking.json",
@@ -171,6 +166,7 @@ const SOURCES = {
         sub: "オトメ向けボイス・音声作品データ",
         accentClass: "site-stella",
         statLabels: ["📦 収録作品数", "✨ 新着", "🔔 近日配信予定"],
+        statSubs: ["2026年発売作品", null, "データあり・配信開始前"],
     },
     poke: {
         url: "https://jikaseiorangette.github.io/pokedora-ranking/data/latest_adt.json",
@@ -179,6 +175,7 @@ const SOURCES = {
         sub: "ドラマCD人気作品データ",
         accentClass: "site-poke",
         statLabels: ["📦 収録作品数", "✨ 新着", "📈 急上昇作品"],
+        statSubs: ["2026年発売作品", null, "前日比10位以上上昇"],
     },
 };
 
@@ -424,14 +421,17 @@ function renderPanel(siteKey, norm) {
         <div class="stat-card">
             <div class="stat-label">${src.statLabels[0]}</div>
             <div class="stat-value">${esc(norm.stats[0])}</div>
+            ${src.statSubs[0] ? `<div class="stat-sub">${esc(src.statSubs[0])}</div>` : ""}
         </div>
         <div class="stat-card">
             <div class="stat-label">${src.statLabels[1]}</div>
             <div class="stat-value">${esc(norm.stats[1])}</div>
+            ${norm.updated ? `<div class="stat-sub">${esc(norm.updated)}</div>` : ""}
         </div>
         <div class="stat-card">
             <div class="stat-label">${src.statLabels[2]}</div>
             <div class="stat-value">${esc(norm.stats[2])}</div>
+            ${src.statSubs[2] ? `<div class="stat-sub">${esc(src.statSubs[2])}</div>` : ""}
         </div>
     </div>
 
@@ -523,7 +523,7 @@ function drawChart(canvasId, itemId, graphData, accentHex) {
     });
 }
 
-const ACCENT_HEX = { garu: '#d4386f', stella: '#534ab7', poke: '#4361c2' };
+const ACCENT_HEX = { garu: '#d4386f', stella: '#b8860b', poke: '#4361c2' };
 
 /* ===========================================
    サイトの読み込み・タブ切り替え
