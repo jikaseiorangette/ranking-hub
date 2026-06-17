@@ -73,7 +73,8 @@ tbody tr:hover td{background:var(--accent-50)}
 .work-title{font-weight:500;color:var(--accent-800);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .work-title a{color:var(--accent-800);text-decoration:none}
 .work-title a:hover{color:var(--accent-600);text-decoration:underline}
-.work-circle{font-size:10px;color:var(--muted);margin-top:2px}
+.work-circle{font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.work-date{font-size:10px;color:var(--muted);margin-right:4px;white-space:nowrap}
 .genres{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
 .gtag{display:inline-block;font-size:9px;background:var(--accent-50);color:var(--accent-muted);border:0.5px solid var(--border-light);border-radius:20px;padding:1px 6px;white-space:nowrap}
 
@@ -198,12 +199,16 @@ function normalizeGaru(data) {
         rank: r.rank,
         rankChange: r.is_new ? null : (r.rank_change || 0),
         isNew: !!r.is_new,
+        releaseDate: r.release_date || "",
+        circle: r.circle || "",
     }));
     const rising = (data.rising || []).map(r => ({
         id: r.work_id, title: r.title, sub: r.voice_actor || "",
         url: r.affiliate_url || "#", img: r.thumb_url || "",
         tags: (r.genre || "").split(",").map(s => s.trim()).filter(Boolean).slice(0, 4),
         rank: r.rank, rise: r.rise,
+        releaseDate: r.release_date || "",
+        circle: r.circle || "",
     }));
     return {
         stats: [data.total_works ?? "—", data.new_today ?? "—", data.rising_count ?? "—"],
@@ -225,6 +230,8 @@ function normalizeStella(data) {
         rank: it.rank,
         rankChange: it.prev_rank ? (it.prev_rank - it.rank) : null,
         isNew: !it.prev_rank,
+        releaseDate: it.release_date || "",
+        circle: it.circle || "",
     }));
     const preorders = (data.preorders || []).slice(0, 2).map(p => ({
         id: p.id, title: p.title, sub: p.cv || "",
@@ -320,6 +327,7 @@ function changeHtml(item) {
 
 function rankRow(item, canvasId) {
     const rb = `<span class="rb ${rankBadgeClass(item.rank)}">${item.rank}</span>`;
+    const dateSpan = item.releaseDate ? `<span class="work-date">${esc(item.releaseDate)}</span>` : "";
     return `<tr>
         <td class="thumb-wrap">
             <span class="thumb-rank">${rb}</span>
@@ -327,7 +335,7 @@ function rankRow(item, canvasId) {
         </td>
         <td class="title-cell">
             <div class="work-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
-            <div class="work-circle">${esc(item.sub)}</div>
+            <div class="work-circle">${dateSpan}${esc(item.circle || "")}</div>
             ${tagsHtml(item.tags)}
         </td>
         <td style="font-size:11px;color:var(--accent-sub)">${esc(item.sub)}</td>
@@ -338,6 +346,7 @@ function rankRow(item, canvasId) {
 
 function risingRow(item, canvasId) {
     const rb = `<span class="rb ${rankBadgeClass(item.rank)}">${item.rank}</span>`;
+    const dateSpan = item.releaseDate ? `<span class="work-date">${esc(item.releaseDate)}</span>` : "";
     return `<tr>
         <td class="thumb-wrap">
             <span class="thumb-rank">${rb}</span>
@@ -345,7 +354,7 @@ function risingRow(item, canvasId) {
         </td>
         <td class="title-cell">
             <div class="work-title"><a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
-            <div class="work-circle">${esc(item.sub)}</div>
+            <div class="work-circle">${dateSpan}${esc(item.circle || "")}</div>
             ${tagsHtml(item.tags)}
         </td>
         <td style="font-size:11px;color:var(--accent-sub)">${esc(item.sub)}</td>
