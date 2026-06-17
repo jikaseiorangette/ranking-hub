@@ -24,6 +24,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .hub-icon{width:38px;height:38px;border-radius:50%;background:#f3eee5;display:flex;align-items:center;justify-content:center;font-size:18px}
 .hub-title{font-family:'Noto Serif JP',serif;font-size:18px;font-weight:500;color:var(--ink);letter-spacing:.04em}
 .hub-sub{font-size:12px;font-weight:500;color:var(--muted);margin-top:3px}
+.hub-update{margin-left:auto;font-size:11px;color:var(--muted);background:var(--bg);border:0.5px solid var(--border);border-radius:20px;padding:5px 12px;white-space:nowrap}
 
 .site-tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
 .site-tab{display:flex;align-items:center;gap:7px;padding:9px 18px;border-radius:20px;font-size:13px;font-weight:500;border:0.5px solid var(--border);color:var(--muted);background:var(--surface);cursor:pointer;transition:all .15s}
@@ -92,9 +93,10 @@ tbody tr:hover td{background:var(--accent-50)}
 
 @media (max-width:640px){
     .hub-wrap{padding:10px 8px 40px}
-    .hub-header{padding:10px 12px;gap:8px}
+    .hub-header{padding:10px 12px;gap:8px;flex-wrap:wrap}
     .hub-title{font-size:14px}
     .hub-sub{font-size:10px}
+    .hub-update{font-size:9px;padding:3px 8px;margin-left:0;width:100%}
     .site-tab{font-size:12px;padding:7px 12px}
     .stat-row{gap:5px}
     .stat-card{padding:8px 6px}
@@ -126,9 +128,9 @@ tbody tr:hover td{background:var(--accent-50)}
 <div class="hub-header">
     <div class="hub-icon">🎧</div>
     <div>
-        <div class="hub-title">ボイスドラマ ランキングハブ</div>
-        <div class="hub-sub">3サイトのランキングをまとめて表示</div>
+        <div class="hub-title">乙女向けボイス・ASMR作品 ランキング</div>
     </div>
+    <div class="hub-update" id="hub-update">🔄 毎日23:30頃更新 ／ ―</div>
 </div>
 
 <div class="site-tabs" id="site-tabs">
@@ -172,6 +174,7 @@ const SOURCES = {
     },
     poke: {
         url: "https://jikaseiorangette.github.io/pokedora-ranking/data/latest_adt.json",
+        metaUrl: "https://jikaseiorangette.github.io/pokedora-ranking/data/meta_adt.json",
         label: "ポケドラ ランキング分析",
         sub: "ドラマCD人気作品データ",
         accentClass: "site-poke",
@@ -249,8 +252,9 @@ function normalizeStella(data) {
     };
 }
 
-function normalizePoke(items) {
+function normalizePoke(items, meta) {
     items = Array.isArray(items) ? items : [];
+    meta = meta || {};
     const ranking = items.map(it => ({
         id: it.product_id,
         title: it.title,
@@ -263,17 +267,21 @@ function normalizePoke(items) {
         isNew: false,
     }));
     return {
-        stats: [items.length || "—", "—", "—"],
+        stats: [
+            meta.total_works ?? (items.length || "—"),
+            meta.new_today ?? "—",
+            meta.rising_count ?? "—",
+        ],
         ranking, rising: [], preorders: [],
         graphData: {},
-        updated: "",
+        updated: meta.updated || "",
     };
 }
 
-function normalize(siteKey, rawData) {
+function normalize(siteKey, rawData, meta) {
     if (siteKey === "garu") return normalizeGaru(rawData);
     if (siteKey === "stella") return normalizeStella(rawData);
-    if (siteKey === "poke") return normalizePoke(rawData);
+    if (siteKey === "poke") return normalizePoke(rawData, meta);
     return { stats: ["—","—","—"], ranking: [], rising: [], preorders: [], graphData: {}, updated: "" };
 }
 
@@ -546,7 +554,18 @@ async function loadSite(siteKey) {
         const res = await fetch(SOURCES[siteKey].url, { mode: "cors" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const raw = await res.json();
-        const norm = normalize(siteKey, raw);
+
+        let meta = null;
+        if (SOURCES[siteKey].metaUrl) {
+            try {
+                const metaRes = await fetch(SOURCES[siteKey].metaUrl, { mode: "cors" });
+                if (metaRes.ok) meta = await metaRes.json();
+            } catch (e) {
+                /* メタ情報の取得失敗は無視してランキング表示は継続 */
+            }
+        }
+
+        const norm = normalize(siteKey, raw, meta);
         cache[siteKey] = norm;
         renderAndMount(siteKey, norm);
     } catch (err) {
@@ -554,7 +573,16 @@ async function loadSite(siteKey) {
     }
 }
 
+function updateHeaderDate(norm) {
+    const el = document.getElementById("hub-update");
+    if (!el) return;
+    el.textContent = norm.updated
+        ? `🔄 毎日23:30頃更新 ／ ${norm.updated}`
+        : `🔄 毎日23:30頃更新`;
+}
+
 function renderAndMount(siteKey, norm) {
+    updateHeaderDate(norm);
     const wrapper = document.createElement("div");
     wrapper.className = `site-panel active ${SOURCES[siteKey].accentClass}`;
     wrapper.innerHTML = renderPanel(siteKey, norm);
