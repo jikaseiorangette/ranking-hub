@@ -173,6 +173,7 @@ const SOURCES = {
     poke: {
         url: "https://jikaseiorangette.github.io/pokedora-ranking/data/latest_adt.json",
         metaUrl: "https://jikaseiorangette.github.io/pokedora-ranking/data/meta_adt.json",
+        graphUrl: "https://jikaseiorangette.github.io/pokedora-ranking/data/graph_adt.json",
         label: "ポケドラ ランキング分析",
         sub: "ドラマCD人気作品データ",
         accentClass: "site-poke",
@@ -261,37 +262,70 @@ function normalizeStella(data) {
     };
 }
 
-function normalizePoke(items, meta) {
+function normalizePoke(items, meta, graphRaw) {
     items = Array.isArray(items) ? items : [];
     meta = meta || {};
-    const ranking = items.map(it => ({
-        id: it.product_id,
-        title: it.title,
-        sub: it.voice_actor || "",
-        url: it.work_url || "#",
-        img: it.thumb_url || "",
-        tags: (it.tags || []).slice(0, 4),
-        rank: it.rank,
-        rankChange: null,
-        isNew: false,
-    }));
+    graphRaw = graphRaw || {};
+
+    const top10 = items.slice(0, 10);
+    const prevRankByPid = {}; // graphRawの最新2点から前日比を計算
+
+    const ranking = items.map(it => {
+        const pid = it.product_id;
+        const g = graphRaw[pid];
+        let rankChange = null;
+        let isNew = false;
+        if (g && g.ranks && g.ranks.length >= 2) {
+            // 末尾2点（前日・当日）を見て前日比を算出
+            const todayRank = g.ranks[g.ranks.length - 1];
+            const prevRank = g.ranks[g.ranks.length - 2];
+            if (prevRank === null || prevRank === undefined) {
+                isNew = true;
+            } else if (todayRank !== null && todayRank !== undefined) {
+                rankChange = prevRank - todayRank;
+            }
+        } else {
+            isNew = true;
+        }
+        return {
+            id: pid,
+            title: it.title,
+            sub: it.voice_actor || "",
+            url: it.work_url || "#",
+            img: it.thumb_url || "",
+            tags: (it.tags || []).slice(0, 4),
+            rank: it.rank,
+            rankChange,
+            isNew,
+        };
+    });
+
+    // 急上昇（前日比10位以上上昇）をgraphRawから抽出
+    const rising = [];
+    ranking.forEach(r => {
+        if (!r.isNew && r.rankChange !== null && r.rankChange >= 10) {
+            rising.push({ ...r, rise: r.rankChange });
+        }
+    });
+    rising.sort((a, b) => b.rise - a.rise);
+
     return {
         stats: [
             meta.total_works ?? (items.length || "—"),
             meta.new_today ?? "—",
-            meta.rising_count ?? "—",
+            meta.rising_count ?? rising.length ?? "—",
         ],
-        ranking, rising: [], preorders: [],
+        ranking, rising: rising.slice(0, 5), preorders: [],
         newTop3: [], randomNew: [], showNewTop3: false, showRandomNew: false,
-        graphData: {},
+        graphData: graphRaw,
         updated: meta.updated || "",
     };
 }
 
-function normalize(siteKey, rawData, meta) {
+function normalize(siteKey, rawData, meta, graphRaw) {
     if (siteKey === "garu") return normalizeGaru(rawData);
     if (siteKey === "stella") return normalizeStella(rawData);
-    if (siteKey === "poke") return normalizePoke(rawData, meta);
+    if (siteKey === "poke") return normalizePoke(rawData, meta, graphRaw);
     return { stats: ["—","—","—"], ranking: [], rising: [], preorders: [], graphData: {}, updated: "" };
 }
 
@@ -607,6 +641,17 @@ function showError(siteKey, err) {
     </div>`;
 }
 
+async function fetchJsonSafe(url) {
+    if (!url) return null;
+    try {
+        const res = await fetch(url, { mode: "cors" });
+        if (!res.ok) return null;
+        return await res.json();
+    } catch (e) {
+        return null;
+    }
+}
+
 async function loadSite(siteKey) {
     if (cache[siteKey]) {
         renderAndMount(siteKey, cache[siteKey]);
@@ -618,17 +663,13 @@ async function loadSite(siteKey) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const raw = await res.json();
 
-        let meta = null;
-        if (SOURCES[siteKey].metaUrl) {
-            try {
-                const metaRes = await fetch(SOURCES[siteKey].metaUrl, { mode: "cors" });
-                if (metaRes.ok) meta = await metaRes.json();
-            } catch (e) {
-                /* メタ情報の取得失敗は無視してランキング表示は継続 */
-            }
-        }
+        // メタ情報（統計）と推移グラフ用データを並行取得（失敗しても本体表示は継続）
+        const [meta, graphRaw] = await Promise.all([
+            fetchJsonSafe(SOURCES[siteKey].metaUrl),
+            fetchJsonSafe(SOURCES[siteKey].graphUrl),
+        ]);
 
-        const norm = normalize(siteKey, raw, meta);
+        const norm = normalize(siteKey, raw, meta, graphRaw);
         cache[siteKey] = norm;
         renderAndMount(siteKey, norm);
     } catch (err) {
