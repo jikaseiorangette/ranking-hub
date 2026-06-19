@@ -319,8 +319,8 @@ function normalizePoke(items, meta, graphRaw) {
         };
     });
 
-    // 近日配信予定：meta_adt.jsonのpreordersを使用
-    const preorders = (meta.preorders || []).map(p => ({
+    // 近日配信予定：meta_adt.jsonのpreordersを使用（表示は2件まで）
+    const preorders = (meta.preorders || []).slice(0, 2).map(p => ({
         id: p.id,
         title: p.title,
         sub: p.voice_actor || "",
