@@ -245,14 +245,25 @@ function normalizeStella(data) {
         releaseDate: p.release_date || "", streamDate: p.streaming_date || "",
         circle: p.circle || "",
     }));
+
+    // がるまにと同じ：30日分のラベルを生成し、historyデータを埋め込む
+    const today = new Date();
+    const fullLabels = [];
+    for (let i = 29; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        fullLabels.push(d.toISOString().slice(0, 10));
+    }
+
     const graphData = {};
     items.forEach(it => {
         const hist = it.history || [];
-        graphData[it.product_id] = {
-            labels: hist.map(h => h.date),
-            ranks: hist.map(h => h.rank),
-        };
+        const histMap = {};
+        hist.forEach(h => { histMap[h.date] = h.rank; });
+        const ranks = fullLabels.map(l => histMap[l] !== undefined ? histMap[l] : null);
+        graphData[it.product_id] = { labels: fullLabels, ranks };
     });
+
     return {
         stats: [data.total_products ?? "—", "—", (data.preorders || []).length || "—"],
         ranking, rising: [], preorders,
