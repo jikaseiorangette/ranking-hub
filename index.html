@@ -177,8 +177,8 @@ const SOURCES = {
         label: "ポケドラ ランキング分析",
         sub: "ドラマCD人気作品データ",
         accentClass: "site-poke",
-        statLabels: ["📦 収録作品数", "✨ 新着", "📈 急上昇作品"],
-        statSubs: ["2026年発売作品", null, "前日比10位以上上昇"],
+        statLabels: ["📦 収録作品数", "✨ 新着", "🔔 近日配信予定"],
+        statSubs: ["2026年発売作品", null, "配信開始前の作品"],
     },
 };
 
@@ -278,22 +278,30 @@ function normalizePoke(items, meta, graphRaw) {
     meta = meta || {};
     graphRaw = graphRaw || {};
 
-    const top10 = items.slice(0, 10);
-    const prevRankByPid = {}; // graphRawの最新2点から前日比を計算
-
     const ranking = items.map(it => {
         const pid = it.product_id;
         const g = graphRaw[pid];
         let rankChange = null;
         let isNew = false;
         if (g && g.ranks && g.ranks.length >= 2) {
-            // 末尾2点（前日・当日）を見て前日比を算出
-            const todayRank = g.ranks[g.ranks.length - 1];
-            const prevRank = g.ranks[g.ranks.length - 2];
-            if (prevRank === null || prevRank === undefined) {
+            const nonNull = g.ranks.filter(v => v !== null && v !== undefined);
+            if (nonNull.length >= 2) {
+                const todayRank = g.ranks[g.ranks.length - 1];
+                // 末尾から2番目のnull以外の値を探す
+                let prevRank = null;
+                for (let i = g.ranks.length - 2; i >= 0; i--) {
+                    if (g.ranks[i] !== null && g.ranks[i] !== undefined) {
+                        prevRank = g.ranks[i];
+                        break;
+                    }
+                }
+                if (prevRank === null) {
+                    isNew = true;
+                } else if (todayRank !== null && todayRank !== undefined) {
+                    rankChange = prevRank - todayRank;
+                }
+            } else {
                 isNew = true;
-            } else if (todayRank !== null && todayRank !== undefined) {
-                rankChange = prevRank - todayRank;
             }
         } else {
             isNew = true;
@@ -311,22 +319,26 @@ function normalizePoke(items, meta, graphRaw) {
         };
     });
 
-    // 急上昇（前日比10位以上上昇）をgraphRawから抽出
-    const rising = [];
-    ranking.forEach(r => {
-        if (!r.isNew && r.rankChange !== null && r.rankChange >= 10) {
-            rising.push({ ...r, rise: r.rankChange });
-        }
-    });
-    rising.sort((a, b) => b.rise - a.rise);
+    // 近日配信予定：meta_adt.jsonのpreordersを使用
+    const preorders = (meta.preorders || []).map(p => ({
+        id: p.id,
+        title: p.title,
+        sub: p.voice_actor || "",
+        url: p.work_url || `https://pokedora.com/products/detail.php?product_id=${p.id}`,
+        img: p.thumb_url || "",
+        tags: (p.tags || []).slice(0, 4),
+        releaseDate: p.release_date || "",
+        circle: "",
+        streamDate: p.release_date || "",
+    }));
 
     return {
         stats: [
             meta.total_works ?? (items.length || "—"),
             meta.new_today ?? "—",
-            meta.rising_count ?? rising.length ?? "—",
+            meta.preorder_count ?? preorders.length ?? "—",
         ],
-        ranking, rising: rising.slice(0, 5), preorders: [],
+        ranking, rising: [], preorders,
         newTop3: [], randomNew: [], showNewTop3: false, showRandomNew: false,
         graphData: graphRaw,
         updated: meta.updated || "",
