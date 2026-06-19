@@ -606,12 +606,7 @@ function drawChart(canvasId, itemId, graphData, accentHex) {
         return;
     }
     const disp = d.ranks.map(v => (v === null || v === undefined) ? null : (v > 14 ? 15 : v));
-    const nonNullIndices = d.ranks.map((v,i) => v !== null && v !== undefined ? i : -1).filter(i => i >= 0);
-    const isSingle = nonNullIndices.length === 1;
-    // 非null点が2点以上あって隣接していない場合はspanGaps:trueで線をつなぐ
-    const isAdjacent = nonNullIndices.length >= 2 &&
-        nonNullIndices.every((idx, i) => i === 0 || idx === nonNullIndices[i-1] + 1);
-    const spanGaps = nonNullIndices.length >= 2 && !isAdjacent;
+    const isSingle = d.ranks.filter(v => v !== null && v !== undefined).length === 1;
     new Chart(ctx, {
         type: 'line',
         data: {
@@ -626,7 +621,7 @@ function drawChart(canvasId, itemId, graphData, accentHex) {
                 pointBackgroundColor: accentHex,
                 fill: false,
                 tension: 0.4,
-                spanGaps: spanGaps,
+                spanGaps: false,
             }]
         },
         options: {
