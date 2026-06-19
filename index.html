@@ -287,14 +287,18 @@ function normalizePoke(items, meta, graphRaw) {
         fullLabels.push(d.toISOString().slice(0, 10));
     }
 
+    // ポケドラのgraph_adt.jsonは実データのある日付のみlabelsに含める
+    // （null区間を作らないことでspanGaps:falseでも線が引かれる）
     const graphData = {};
     Object.entries(graphRaw).forEach(([pid, gd]) => {
+        const rawLabels = gd.labels || [];
+        const rawRanks = gd.ranks || [];
+        // 全30日分に展開
         const histMap = {};
-        (gd.labels || []).forEach((l, i) => { histMap[l] = gd.ranks[i]; });
-        graphData[pid] = {
-            labels: fullLabels,
-            ranks: fullLabels.map(l => histMap[l] !== undefined ? histMap[l] : null),
-        };
+        rawLabels.forEach((l, i) => { if (rawRanks[i] !== null && rawRanks[i] !== undefined) histMap[l] = rawRanks[i]; });
+        const filledLabels = fullLabels;
+        const filledRanks = fullLabels.map(l => histMap[l] !== undefined ? histMap[l] : null);
+        graphData[pid] = { labels: filledLabels, ranks: filledRanks };
     });
 
     const ranking = items.map(it => {
@@ -602,7 +606,12 @@ function drawChart(canvasId, itemId, graphData, accentHex) {
         return;
     }
     const disp = d.ranks.map(v => (v === null || v === undefined) ? null : (v > 14 ? 15 : v));
-    const isSingle = d.ranks.filter(v => v !== null && v !== undefined).length === 1;
+    const nonNullIndices = d.ranks.map((v,i) => v !== null && v !== undefined ? i : -1).filter(i => i >= 0);
+    const isSingle = nonNullIndices.length === 1;
+    // 非null点が2点以上あって隣接していない場合はspanGaps:trueで線をつなぐ
+    const isAdjacent = nonNullIndices.length >= 2 &&
+        nonNullIndices.every((idx, i) => i === 0 || idx === nonNullIndices[i-1] + 1);
+    const spanGaps = nonNullIndices.length >= 2 && !isAdjacent;
     new Chart(ctx, {
         type: 'line',
         data: {
@@ -617,7 +626,7 @@ function drawChart(canvasId, itemId, graphData, accentHex) {
                 pointBackgroundColor: accentHex,
                 fill: false,
                 tension: 0.4,
-                spanGaps: false,
+                spanGaps: spanGaps,
             }]
         },
         options: {
