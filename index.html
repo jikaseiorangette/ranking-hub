@@ -278,16 +278,34 @@ function normalizePoke(items, meta, graphRaw) {
     meta = meta || {};
     graphRaw = graphRaw || {};
 
+    // がるまにと同じ：30日分のラベルを生成してgraphRawを展開
+    const today = new Date();
+    const fullLabels = [];
+    for (let i = 29; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        fullLabels.push(d.toISOString().slice(0, 10));
+    }
+
+    const graphData = {};
+    Object.entries(graphRaw).forEach(([pid, gd]) => {
+        const histMap = {};
+        (gd.labels || []).forEach((l, i) => { histMap[l] = gd.ranks[i]; });
+        graphData[pid] = {
+            labels: fullLabels,
+            ranks: fullLabels.map(l => histMap[l] !== undefined ? histMap[l] : null),
+        };
+    });
+
     const ranking = items.map(it => {
         const pid = it.product_id;
-        const g = graphRaw[pid];
+        const g = graphData[pid];
         let rankChange = null;
         let isNew = false;
-        if (g && g.ranks && g.ranks.length >= 2) {
+        if (g && g.ranks) {
             const nonNull = g.ranks.filter(v => v !== null && v !== undefined);
             if (nonNull.length >= 2) {
                 const todayRank = g.ranks[g.ranks.length - 1];
-                // 末尾から2番目のnull以外の値を探す
                 let prevRank = null;
                 for (let i = g.ranks.length - 2; i >= 0; i--) {
                     if (g.ranks[i] !== null && g.ranks[i] !== undefined) {
@@ -295,23 +313,22 @@ function normalizePoke(items, meta, graphRaw) {
                         break;
                     }
                 }
-                if (prevRank === null) {
-                    isNew = true;
-                } else if (todayRank !== null && todayRank !== undefined) {
-                    rankChange = prevRank - todayRank;
-                }
+                if (prevRank === null) isNew = true;
+                else if (todayRank !== null) rankChange = prevRank - todayRank;
             } else {
                 isNew = true;
             }
         } else {
             isNew = true;
         }
+        // サムネイルのフォールバック
+        const imgUrl = it.thumb_url || `https://pokedora.com/get_image.php?product_id=${pid}`;
         return {
             id: pid,
             title: it.title,
             sub: it.voice_actor || "",
             url: it.work_url || "#",
-            img: it.thumb_url || "",
+            img: imgUrl,
             tags: (it.tags || []).slice(0, 4),
             rank: it.rank,
             rankChange,
@@ -325,7 +342,7 @@ function normalizePoke(items, meta, graphRaw) {
         title: p.title,
         sub: p.voice_actor || "",
         url: p.work_url || `https://pokedora.com/products/detail.php?product_id=${p.id}`,
-        img: p.thumb_url || "",
+        img: p.thumb_url || `https://pokedora.com/get_image.php?product_id=${p.id}`,
         tags: (p.tags || []).slice(0, 4),
         releaseDate: p.release_date || "",
         circle: "",
@@ -340,7 +357,7 @@ function normalizePoke(items, meta, graphRaw) {
         ],
         ranking, rising: [], preorders,
         newTop3: [], randomNew: [], showNewTop3: false, showRandomNew: false,
-        graphData: graphRaw,
+        graphData,
         updated: meta.updated || "",
     };
 }
