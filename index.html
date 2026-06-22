@@ -335,9 +335,15 @@ function normalizePoke(items, meta, graphRaw) {
         isNew = newWorkIds.has(pid);
         // サムネイルのフォールバック
         const imgUrl = it.thumb_url || `https://pokedora.com/get_image.php?product_id=${pid}`;
+        // タイトルから《配信開始は...》を除去
+        const cleanTitle = it.title.replace(/《?配信開始は[^》）]+[》）]?\s*/g, '').trim();
+        // 日付表示：発売日確定済み→発売日、発売予定日あり→発売予定日
+        const releaseDate = it.release_date || "";
+        const scheduledDate = it.scheduled_date || "";
+        const displayDate = releaseDate || scheduledDate;
         return {
             id: pid,
-            title: it.title,
+            title: cleanTitle,
             sub: it.voice_actor || "",
             url: it.work_url || "#",
             img: imgUrl,
@@ -345,7 +351,7 @@ function normalizePoke(items, meta, graphRaw) {
             rank: it.rank,
             rankChange,
             isNew,
-            releaseDate: it.release_date || "",
+            releaseDate: displayDate,
             circle: "",
         };
     });
