@@ -293,12 +293,16 @@ function normalizePoke(items, meta, graphRaw) {
     Object.entries(graphRaw).forEach(([pid, gd]) => {
         const rawLabels = gd.labels || [];
         const rawRanks = gd.ranks || [];
-        // 全30日分に展開
         const histMap = {};
         rawLabels.forEach((l, i) => { if (rawRanks[i] !== null && rawRanks[i] !== undefined) histMap[l] = rawRanks[i]; });
-        const filledLabels = fullLabels;
-        const filledRanks = fullLabels.map(l => histMap[l] !== undefined ? histMap[l] : null);
-        graphData[pid] = { labels: filledLabels, ranks: filledRanks };
+        // 最初にデータが記録された日付
+        const firstDate = rawLabels.find((l, i) => rawRanks[i] !== null && rawRanks[i] !== undefined);
+        const filledRanks = fullLabels.map(l => {
+            if (histMap[l] !== undefined) return histMap[l];
+            if (firstDate && l > firstDate) return 21; // 追跡開始後のデータなし = 圏外
+            return null; // 追跡開始前 = 空白
+        });
+        graphData[pid] = { labels: fullLabels, ranks: filledRanks };
     });
 
     const ranking = items.map(it => {
@@ -606,7 +610,9 @@ function drawChart(canvasId, itemId, graphData, accentHex) {
         return;
     }
     const disp = d.ranks.map(v => (v === null || v === undefined) ? null : (v > 14 ? 15 : v));
-    const isSingle = d.ranks.filter(v => v !== null && v !== undefined).length === 1;
+    const nonNullCount = d.ranks.filter(v => v !== null && v !== undefined).length;
+    const isSingle = nonNullCount === 1;
+    const isSparse = nonNullCount <= 3; // データが少ない場合は点を大きく表示
     new Chart(ctx, {
         type: 'line',
         data: {
@@ -616,7 +622,7 @@ function drawChart(canvasId, itemId, graphData, accentHex) {
                 borderColor: accentHex,
                 backgroundColor: 'transparent',
                 borderWidth: 1.5,
-                pointRadius: isSingle ? 5 : 2,
+                pointRadius: isSingle ? 5 : isSparse ? 4 : 2,
                 pointHoverRadius: 6,
                 pointBackgroundColor: accentHex,
                 fill: false,
