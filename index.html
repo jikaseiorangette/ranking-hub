@@ -358,9 +358,9 @@ function normalizePoke(items, meta, graphRaw) {
         url: p.work_url || `https://pokedora.com/products/detail.php?product_id=${p.id}`,
         img: p.thumb_url || `https://pokedora.com/get_image.php?product_id=${p.id}`,
         tags: (p.tags || []).slice(0, 4),
-        releaseDate: p.release_date || "",
+        releaseDate: p.release_date || "",       // 発売予定日
+        streamDate: p.registered_date || "",      // 予約開始日
         circle: "",
-        streamDate: p.release_date || "",
     }));
 
     return {
@@ -514,7 +514,7 @@ function renderPanel(siteKey, norm) {
             </div>
             <div class="table-card"><table>
                 <colgroup><col style="width:150px"><col style="width:auto"><col style="width:10%"><col style="width:12%"></colgroup>
-                <thead><tr><th></th><th>タイトル / サークル</th><th>声優</th><th>発売予定日</th></tr></thead>
+                <thead><tr><th></th><th>${siteKey === 'poke' ? 'タイトル / 予約開始日 / ジャンル' : 'タイトル / 予約開始日 / サークル / ジャンル'}</th><th>声優</th><th>発売予定日</th></tr></thead>
                 <tbody>${norm.preorders.map((p, i) => preorderRow(p, i)).join("")}</tbody>
             </table></div>
         </div>`;
@@ -531,7 +531,7 @@ function renderPanel(siteKey, norm) {
             </div>
             <div class="table-card"><table>
                 <colgroup><col style="width:150px"><col style="width:auto"><col style="width:10%"><col style="width:8%"><col style="width:26%"></colgroup>
-                <thead><tr><th></th><th>タイトル / サークル</th><th>声優</th><th>新着</th><th class="chart-cell">推移グラフ</th></tr></thead>
+                <thead><tr><th></th><th>タイトル / 発売日 / サークル / ジャンル</th><th>声優</th><th>新着</th><th class="chart-cell">推移グラフ</th></tr></thead>
                 <tbody>${norm.randomNew.map((r, i) => newPickupRow(r, `${siteKey}_rn_${i+1}`, true)).join("")}</tbody>
             </table></div>
         </div>`;
@@ -544,7 +544,7 @@ function renderPanel(siteKey, norm) {
             </div>
             <div class="table-card"><table>
                 <colgroup><col style="width:150px"><col style="width:auto"><col style="width:10%"><col style="width:8%"><col style="width:26%"></colgroup>
-                <thead><tr><th></th><th>タイトル / サークル</th><th>声優</th><th>新着</th><th class="chart-cell">推移グラフ</th></tr></thead>
+                <thead><tr><th></th><th>タイトル / 発売日 / サークル / ジャンル</th><th>声優</th><th>新着</th><th class="chart-cell">推移グラフ</th></tr></thead>
                 <tbody>${norm.newTop3.map((r, i) => newPickupRow(r, `${siteKey}_nt_${i+1}`, false)).join("")}</tbody>
             </table></div>
         </div>`;
@@ -557,7 +557,7 @@ function renderPanel(siteKey, norm) {
             </div>
             <div class="table-card"><table>
                 <colgroup><col style="width:150px"><col style="width:auto"><col style="width:10%"><col style="width:8%"><col style="width:26%"></colgroup>
-                <thead><tr><th></th><th>タイトル / サークル</th><th>声優</th><th>上昇幅</th><th class="chart-cell">推移グラフ</th></tr></thead>
+                <thead><tr><th></th><th>タイトル / 発売日 / サークル / ジャンル</th><th>声優</th><th>上昇幅</th><th class="chart-cell">推移グラフ</th></tr></thead>
                 <tbody>${norm.rising.map((r, i) => risingRow(r, `${siteKey}_rc_${i+1}`)).join("")}</tbody>
             </table></div>
         </div>`;
@@ -597,7 +597,7 @@ function renderPanel(siteKey, norm) {
         </div>
         <div class="table-card"><table>
             <colgroup><col style="width:150px"><col style="width:auto"><col style="width:10%"><col style="width:7%"><col style="width:26%"></colgroup>
-            <thead><tr><th></th><th>タイトル / サークル</th><th>声優</th><th>推移</th><th class="chart-cell">推移グラフ</th></tr></thead>
+            <thead><tr><th></th><th>${siteKey === 'poke' ? 'タイトル / 発売日 / ジャンル' : 'タイトル / 発売日 / サークル / ジャンル'}</th><th>声優</th><th>推移</th><th class="chart-cell">推移グラフ</th></tr></thead>
             <tbody>${rankingRows}</tbody>
         </table></div>
     </div>`;
