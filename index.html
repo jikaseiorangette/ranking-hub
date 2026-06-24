@@ -624,7 +624,6 @@ function drawChart(canvasId, itemId, graphData, accentHex) {
     const disp = d.ranks.map(v => (v === null || v === undefined) ? null : (v > 14 ? 15 : v));
     const nonNullCount = d.ranks.filter(v => v !== null && v !== undefined).length;
     const isSingle = nonNullCount === 1;
-    const isSparse = nonNullCount <= 3; // データが少ない場合は点を大きく表示
     new Chart(ctx, {
         type: 'line',
         data: {
@@ -634,7 +633,7 @@ function drawChart(canvasId, itemId, graphData, accentHex) {
                 borderColor: accentHex,
                 backgroundColor: 'transparent',
                 borderWidth: 1.5,
-                pointRadius: isSingle ? 5 : isSparse ? 4 : 2,
+                pointRadius: isSingle ? 5 : 2,
                 pointHoverRadius: 6,
                 pointBackgroundColor: accentHex,
                 fill: false,
