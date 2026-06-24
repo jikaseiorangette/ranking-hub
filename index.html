@@ -234,7 +234,7 @@ function normalizeStella(data) {
         tags: (it.tags || []).slice(0, 4),
         rank: it.rank,
         rankChange: it.prev_rank ? (it.prev_rank - it.rank) : null,
-        isNew: !it.prev_rank,
+        isNew: !!it.is_new,
         releaseDate: it.release_date || "",
         circle: it.circle || "",
     }));
