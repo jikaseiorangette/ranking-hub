@@ -707,7 +707,7 @@ function renderPanel(siteKey, norm) {
             </div>
             <div class="table-card"><table>
                 <colgroup><col style="width:150px"><col style="width:auto"><col style="width:10%"><col style="width:10%"></colgroup>
-                <thead><tr><th></th><th>タイトル / 発売日 / サークル / ジャンル</th><th>声優</th><th></th></tr></thead>
+                <thead><tr><th></th><th>タイトル / 発売日 / ブランド / ジャンル</th><th>声優</th><th></th></tr></thead>
                 <tbody>${rows}</tbody>
             </table></div>
         </div>`;
@@ -748,7 +748,7 @@ function renderPanel(siteKey, norm) {
         </div>
         <div class="table-card"><table>
             <colgroup><col style="width:150px"><col style="width:auto"><col style="width:10%"><col style="width:7%"><col style="width:26%"></colgroup>
-            <thead><tr><th></th><th>${siteKey === 'poke' ? 'タイトル / 発売日 / ジャンル' : 'タイトル / 発売日 / サークル / ジャンル'}</th><th>声優</th><th>推移</th><th class="chart-cell">推移グラフ</th></tr></thead>
+            <thead><tr><th></th><th>${siteKey === 'poke' ? 'タイトル / 発売日 / ジャンル' : siteKey === 'garucomm' ? 'タイトル / 発売日 / ブランド / ジャンル' : siteKey === 'stella' ? 'タイトル / 発売日 / ブランド・サークル / ジャンル' : 'タイトル / 発売日 / サークル / ジャンル'}</th><th>声優</th><th>推移</th><th class="chart-cell">推移グラフ</th></tr></thead>
             <tbody>${rankingRows}</tbody>
         </table></div>
     </div>`;
