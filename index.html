@@ -518,7 +518,12 @@ function thumbHtml(item) {
 
 function tagsHtml(tags) {
     if (!tags || !tags.length) return "";
-    return `<div class="genres">${tags.map(t => `<span class="gtag">${esc(t)}</span>`).join("")}</div>`;
+    const tagSpan = t => {
+        if (t === "がるまに独占") return `<span class="gtag" style="background:#fefce8;color:#854d0e;border-color:#fde047;font-weight:500">${esc(t)}</span>`;
+        if (t === "セール中")    return `<span class="gtag" style="background:#f0fdf4;color:#166534;border-color:#86efac;font-weight:500">${esc(t)}</span>`;
+        return `<span class="gtag">${esc(t)}</span>`;
+    };
+    return `<div class="genres">${tags.map(tagSpan).join("")}</div>`;
 }
 
 function changeHtml(item) {
