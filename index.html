@@ -273,7 +273,12 @@ function normalizeStella(data) {
         const hist = it.history || [];
         const histMap = {};
         hist.forEach(h => { histMap[h.date] = h.rank; });
-        const ranks = fullLabels.map(l => histMap[l] !== undefined ? histMap[l] : null);
+        const firstDate = hist.length ? hist.reduce((a, b) => a.date < b.date ? a : b).date : null;
+        const ranks = fullLabels.map(l => {
+            if (histMap[l] !== undefined) return histMap[l];
+            if (firstDate && l > firstDate) return 21;
+            return null;
+        });
         graphData[it.product_id] = { labels: fullLabels, ranks };
     });
 
