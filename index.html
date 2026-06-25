@@ -33,6 +33,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink)
 .site-tab.active.site-garu{background:#d4386f}
 .site-tab.active.site-stella{background:#b8860b}
 .site-tab.active.site-poke{background:#4361c2}
+.site-tab.active.site-garucomm{background:#c06830}
+.site-garucomm{--accent-50:#fff5ee;--accent-100:#ffe4cc;--accent-600:#c06830;--accent-800:#7a3c10;--accent-muted:#d49a70;--accent-sub:#a05020;}
 .site-tab .tab-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
 .site-panel{display:none}
@@ -136,7 +138,8 @@ tbody tr:hover td{background:var(--accent-50)}
 </div>
 
 <div class="site-tabs" id="site-tabs">
-    <button class="site-tab active site-garu" data-site="garu">がるまに</button>
+    <button class="site-tab active site-garu" data-site="garu">がるまに同人</button>
+    <button class="site-tab site-garucomm" data-site="garucomm">がるまに商業</button>
     <button class="site-tab site-stella" data-site="stella">ステラプレイヤー</button>
     <button class="site-tab site-poke" data-site="poke">ポケドラ</button>
 </div>
@@ -179,6 +182,16 @@ const SOURCES = {
         accentClass: "site-poke",
         statLabels: ["📦 収録作品数", "✨ 新着", "🔔 近日配信予定"],
         statSubs: ["オトナ向け全作品", null, "配信開始前の作品"],
+    },
+    garucomm: {
+        url: "https://jikaseiorangette.github.io/garumani-ranking/data/latest.json",
+        metaUrl: "https://jikaseiorangette.github.io/garumani-ranking/data/meta.json",
+        graphUrl: "https://jikaseiorangette.github.io/garumani-ranking/data/graph.json",
+        label: "がるまに商業 ランキング分析",
+        sub: "DLsite商業ガールズドラマ作品データ",
+        accentClass: "site-garucomm",
+        statLabels: ["📦 収録作品数", "✨ 新着", "🔖 がるまに独占"],
+        statSubs: ["登録済み全作品", null, "TOP10内の独占作品数"],
     },
 };
 
@@ -382,10 +395,78 @@ function normalizePoke(items, meta, graphRaw) {
     };
 }
 
+function normalizeGaruComm(items, meta, graphRaw) {
+    items = Array.isArray(items) ? items : [];
+    meta = meta || {};
+    graphRaw = graphRaw || {};
+
+    const today = new Date();
+    const fullLabels = [];
+    for (let i = 29; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        fullLabels.push(d.toISOString().slice(0, 10));
+    }
+
+    const graphData = {};
+    Object.entries(graphRaw).forEach(([pid, gd]) => {
+        const rawLabels = gd.labels || [];
+        const rawRanks = gd.ranks || [];
+        const histMap = {};
+        rawLabels.forEach((l, i) => { if (rawRanks[i] !== null && rawRanks[i] !== undefined) histMap[l] = rawRanks[i]; });
+        const firstDate = rawLabels.find((l, i) => rawRanks[i] !== null && rawRanks[i] !== undefined);
+        const filledRanks = fullLabels.map(l => {
+            if (histMap[l] !== undefined) return histMap[l];
+            if (firstDate && l > firstDate) return 21;
+            return null;
+        });
+        graphData[pid] = { labels: fullLabels, ranks: filledRanks };
+    });
+
+    const newWorkIds = new Set(meta.new_work_ids || []);
+
+    const ranking = items.map(it => {
+        const pid = it.product_id;
+        const g = graphData[pid];
+        let rankChange = null;
+        if (g && g.ranks) {
+            const nonNull = g.ranks.filter(v => v !== null && v !== undefined);
+            if (nonNull.length >= 2) {
+                rankChange = nonNull[nonNull.length - 2] - it.rank;
+            }
+        }
+        const isNew = !!(it.is_new || newWorkIds.has(pid));
+        return {
+            id: pid,
+            title: it.title,
+            sub: it.cv || "",
+            url: it.work_url || "#",
+            img: it.thumb_url || "",
+            tags: (it.genres || []).slice(0, 4),
+            rank: it.rank,
+            rankChange: isNew ? null : rankChange,
+            isNew,
+            releaseDate: it.release_date || "",
+            circle: it.circle || "",
+        };
+    });
+
+    const exclusiveCount = items.filter(it => it.is_exclusive).length;
+
+    return {
+        stats: [meta.total_works ?? "—", meta.new_today ?? "—", exclusiveCount || "—"],
+        ranking, rising: [], preorders: [],
+        newTop3: [], randomNew: [], showNewTop3: false, showRandomNew: false,
+        graphData,
+        updated: meta.updated || "",
+    };
+}
+
 function normalize(siteKey, rawData, meta, graphRaw) {
     if (siteKey === "garu") return normalizeGaru(rawData);
     if (siteKey === "stella") return normalizeStella(rawData);
     if (siteKey === "poke") return normalizePoke(rawData, meta, graphRaw);
+    if (siteKey === "garucomm") return normalizeGaruComm(rawData, meta, graphRaw);
     return { stats: ["—","—","—"], ranking: [], rising: [], preorders: [], graphData: {}, updated: "" };
 }
 
@@ -681,7 +762,7 @@ function drawChart(canvasId, itemId, graphData, accentHex) {
     });
 }
 
-const ACCENT_HEX = { garu: '#d4386f', stella: '#b8860b', poke: '#4361c2' };
+const ACCENT_HEX = { garu: '#d4386f', stella: '#b8860b', poke: '#4361c2', garucomm: '#c06830' };
 
 /* ===========================================
    サイトの読み込み・タブ切り替え
