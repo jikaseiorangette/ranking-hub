@@ -453,10 +453,26 @@ function normalizeGaruComm(items, meta, graphRaw) {
 
     const exclusiveCount = items.filter(it => it.is_exclusive).length;
 
+    const exclusivePickup = items
+        .filter(it => it.is_exclusive)
+        .slice(0, 2)
+        .map(it => ({
+            id: it.product_id,
+            title: it.title,
+            sub: it.cv || "",
+            url: it.work_url || "#",
+            img: it.thumb_url || "",
+            tags: (it.genres || []).slice(0, 4),
+            rank: it.rank,
+            releaseDate: it.release_date || "",
+            circle: it.circle || "",
+        }));
+
     return {
         stats: [meta.total_works ?? "—", meta.new_today ?? "—", exclusiveCount || "—"],
         ranking, rising: [], preorders: [],
         newTop3: [], randomNew: [], showNewTop3: false, showRandomNew: false,
+        exclusivePickup,
         graphData,
         updated: meta.updated || "",
     };
@@ -650,6 +666,40 @@ function renderPanel(siteKey, norm) {
         </div>`;
     }
 
+    // がるまに商業専用：がるまに独占ピックアップ
+    let exclusiveSection = "";
+    if (siteKey === "garucomm" && norm.exclusivePickup && norm.exclusivePickup.length) {
+        const rows = norm.exclusivePickup.map(it => {
+            const rb = `<span class="rb ${rankBadgeClass(it.rank)}">${it.rank}</span>`;
+            const dateSpan = it.releaseDate ? `<span class="work-date">${esc(it.releaseDate)}</span>` : "";
+            return `<tr>
+                <td class="thumb-wrap">
+                    <span class="thumb-rank">${rb}</span>
+                    <a href="${esc(it.url)}" target="_blank" rel="noopener">${thumbHtml(it)}</a>
+                </td>
+                <td class="title-cell">
+                    <div class="work-title"><a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.title)}</a></div>
+                    <div class="work-circle">${dateSpan}${esc(it.circle)}</div>
+                    ${tagsHtml(it.tags)}
+                </td>
+                <td style="font-size:11px;color:var(--accent-sub)">${esc(it.sub)}</td>
+                <td><span class="section-badge" style="background:#fdf4ff;color:#7e22ce;border-color:#d8b4fe">🔖 独占</span></td>
+            </tr>`;
+        }).join("");
+        exclusiveSection = `<div class="section">
+            <div class="section-head">
+                <span style="font-size:16px">🔖</span>
+                <span class="section-title">がるまに独占 注目作品</span>
+                <span class="section-badge">独占配信</span>
+            </div>
+            <div class="table-card"><table>
+                <colgroup><col style="width:150px"><col style="width:auto"><col style="width:10%"><col style="width:10%"></colgroup>
+                <thead><tr><th></th><th>タイトル / 発売日 / サークル / ジャンル</th><th>声優</th><th></th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table></div>
+        </div>`;
+    }
+
     const rankingRows = top10.length
         ? top10.map((r, i) => rankRow(r, `${siteKey}_wc_${i+1}`)).join("")
         : `<tr><td colspan="5" class="empty-msg">データがありません</td></tr>`;
@@ -675,6 +725,7 @@ function renderPanel(siteKey, norm) {
 
     ${preorderSection}
     ${pickupSection}
+    ${exclusiveSection}
 
     <div class="section">
         <div class="section-head">
