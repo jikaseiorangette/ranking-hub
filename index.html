@@ -191,7 +191,7 @@ const SOURCES = {
         sub: "DLsite商業ガールズドラマ作品データ",
         accentClass: "site-garucomm",
         statLabels: ["📦 収録作品数", "✨ 新着", "🔖 がるまに独占"],
-        statSubs: ["2026年発売作品", null, "ランキング内の独占作品数"],
+        statSubs: ["2026年発売作品", null, "TOP10内の独占作品数"],
     },
 };
 
@@ -460,7 +460,7 @@ function normalizeGaruComm(items, meta, graphRaw) {
         };
     });
 
-    const exclusiveCount = items.filter(it => it.is_exclusive).length;
+    const exclusiveCount = items.filter(it => it.is_exclusive && it.rank <= 10).length;
 
     const exclusivePickup = items
         .filter(it => it.is_exclusive)
